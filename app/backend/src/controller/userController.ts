@@ -1,5 +1,7 @@
 import { Response, Request, NextFunction } from 'express';
 import UserService from '../service/userService';
+import { Token } from '../middlewares';
+import runSchema from '../errors/utils/runSchema';
 
 class UserController {
   static async findAll(
@@ -13,11 +15,18 @@ class UserController {
   }
 
   static async login(
-    _req: Request,
+    req: Request,
     res: Response,
     _next: NextFunction,
   ): Promise<Response<string>> {
-    return res.status(200);
+    const fields = await runSchema('loginFields', { ...req.body });
+    const userRepresentation = await runSchema('login', fields);
+
+    const user = await UserService.login(userRepresentation);
+    const { password, ...userWithoutPassword } = user;
+    const token = await Token.generateToken(userWithoutPassword);
+
+    return res.status(200).json({ token });
   }
 }
 
